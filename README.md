@@ -1,20 +1,77 @@
 # SmartHealthHub
 
-Production-ready Django backend foundation for SmartHealthHub.
+Backend API for a healthcare appointment management platform built with Django REST Framework.
 
-## Stack
+## Features
+
+### Authentication & Accounts
+
+- JWT Authentication (Access & Refresh Tokens)
+- User Registration
+- User Login
+- User Profile Management
+- Role-based access control
+- Supported roles:
+  - Admin
+  - Doctor
+  - Patient
+
+### Providers Management
+
+- List healthcare providers
+- Create provider profiles
+- Update provider information
+- Delete providers
+- Search providers
+- Filter providers
+- Pagination support
+
+### Appointments Management
+
+- Patient appointment booking
+- Appointment status tracking
+- Prevent double-booking
+- Provider schedule management
+- Search and filtering
+- Pagination support
+
+### Notifications Management
+
+- User notifications
+- Mark notifications as read
+- User-specific notification access
+- Admin access to all notifications
+- Pagination support
+
+### Infrastructure
+
+- Docker & Docker Compose
+- PostgreSQL
+- Swagger / OpenAPI Documentation
+- Automated Testing with Pytest
+- GitHub Actions CI
+- Environment-based Settings
+- Production-ready Django Configuration
+
+---
+
+## Tech Stack
 
 - Python 3.12
-- Django 5+
+- Django 5
 - Django REST Framework
 - PostgreSQL
-- Docker and Docker Compose
-- JWT authentication with SimpleJWT
-- OpenAPI/Swagger with drf-spectacular
+- Docker
+- Docker Compose
+- SimpleJWT
+- drf-spectacular
 - django-filter
-- python-decouple
-- Pytest, Black, Flake8
-- GitHub Actions CI
+- pytest
+- black
+- flake8
+- GitHub Actions
+
+---
 
 ## Project Structure
 
@@ -22,86 +79,192 @@ Production-ready Django backend foundation for SmartHealthHub.
 SmartHealthHub/
 ├── accounts/
 ├── appointments/
-├── config/
-│   ├── settings/
-│   │   ├── base.py
-│   │   ├── local.py
-│   │   ├── production.py
-│   │   └── test.py
-│   ├── api_urls.py
-│   ├── urls.py
-│   └── views.py
 ├── notifications/
 ├── providers/
 ├── tests/
+├── config/
+│   ├── settings/
+│   ├── api_urls.py
+│   ├── urls.py
+│   └── views.py
 ├── docker/
 ├── .github/workflows/
-├── Dockerfile
-├── docker-compose.yml
 ├── manage.py
-└── requirements.txt
+├── requirements.txt
+├── Dockerfile
+└── docker-compose.yml
 ```
 
-## Quick Start
+---
 
-Create your environment file:
+## Running With Docker
+
+Clone the repository:
+
+```bash
+git clone https://github.com/SeyedMohsen2004/SmartHealthHub.git
+cd SmartHealthHub
+```
+
+Create environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Run the stack:
+Build and start services:
 
 ```bash
 docker compose up --build
 ```
 
-The API will be available at:
-
-- API base: `http://localhost:8000/api/v1/`
-- Health check: `http://localhost:8000/api/v1/health/`
-- Swagger UI: `http://localhost:8000/api/docs/`
-- OpenAPI schema: `http://localhost:8000/api/schema/`
-- JWT token: `http://localhost:8000/api/v1/auth/token/`
-- JWT refresh: `http://localhost:8000/api/v1/auth/token/refresh/`
-- JWT verify: `http://localhost:8000/api/v1/auth/token/verify/`
-
-## Local Development Without Docker
-
-Install dependencies:
+Run migrations:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+docker compose exec api python manage.py migrate
 ```
 
-Set environment variables from `.env.example`, then run:
+---
+
+## API Documentation
+
+Swagger UI:
+
+```text
+http://localhost:8000/api/docs/
+```
+
+OpenAPI Schema:
+
+```text
+http://localhost:8000/api/schema/
+```
+
+Health Check:
+
+```text
+http://localhost:8000/api/v1/health/
+```
+
+---
+
+## API Endpoints
+
+### Accounts
+
+| Method | Endpoint |
+|----------|----------|
+| POST | `/api/v1/auth/register/` |
+| POST | `/api/v1/auth/login/` |
+| POST | `/api/v1/auth/refresh/` |
+| GET | `/api/v1/auth/profile/` |
+| PATCH | `/api/v1/auth/profile/` |
+
+### Providers
+
+| Method | Endpoint |
+|----------|----------|
+| GET | `/api/v1/providers/` |
+| POST | `/api/v1/providers/` |
+| GET | `/api/v1/providers/{id}/` |
+| PATCH | `/api/v1/providers/{id}/` |
+| DELETE | `/api/v1/providers/{id}/` |
+
+### Appointments
+
+| Method | Endpoint |
+|----------|----------|
+| GET | `/api/v1/appointments/` |
+| POST | `/api/v1/appointments/` |
+| GET | `/api/v1/appointments/{id}/` |
+| PATCH | `/api/v1/appointments/{id}/` |
+| DELETE | `/api/v1/appointments/{id}/` |
+
+### Notifications
+
+| Method | Endpoint |
+|----------|----------|
+| GET | `/api/v1/notifications/` |
+| GET | `/api/v1/notifications/{id}/` |
+| PATCH | `/api/v1/notifications/{id}/` |
+
+---
+
+## Running Tests
+
+Run all tests:
 
 ```bash
-python manage.py migrate
-python manage.py runserver
+docker compose exec api pytest
 ```
 
-## Quality Checks
+Current status:
+
+```text
+38 tests passing
+```
+
+---
+
+## Code Quality
+
+Format check:
 
 ```bash
 black --check .
+```
+
+Lint:
+
+```bash
 flake8 .
+```
+
+Run tests:
+
+```bash
 pytest
 ```
 
-## Configuration
+---
 
-Runtime settings are read from environment variables through `python-decouple`.
-Use `.env.example` as the contract for required local and container settings.
+## CI/CD
 
-Production runs through `config.settings.production`, enables secure cookies,
-HSTS, SSL redirects, WhiteNoise static files, structured console logging, and
-PostgreSQL persistent connections.
+GitHub Actions automatically runs:
 
-## API Versioning
+- Black
+- Flake8
+- Django Deploy Checks
+- Pytest
 
-All business APIs are mounted under `/api/v1/`. The scaffold includes app URL
-modules for `accounts`, `providers`, `appointments`, and `notifications` without
-domain business logic yet.
+On:
+
+- Push to `develop`
+- Push to `main`
+- Pull Requests
+
+---
+
+## Current Project Status
+
+Implemented:
+
+- Authentication Module
+- Providers Module
+- Appointments Module
+- Notifications Module
+- Swagger Documentation
+- Pagination
+- Filtering & Search
+- Automated Testing
+- Docker Environment
+- GitHub Actions CI
+
+Future Improvements:
+
+- Email Notifications
+- Appointment Reminder Scheduler
+- Audit Logs
+- Redis Caching
+- Background Tasks (Celery)
+- Monitoring & Observability
