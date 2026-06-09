@@ -19,5 +19,11 @@ urlpatterns = [
         "appointments/",
         include(("appointments.urls", "appointments"), namespace="appointments"),
     ),
-    path("notifications/", include("notifications.urls")),
+    path(
+        "notifications/",
+        include(
+            ("notifications.urls", "notifications"),
+            namespace="notifications",
+        ),
+    ),
 ]
