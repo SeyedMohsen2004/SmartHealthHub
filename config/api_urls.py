@@ -11,7 +11,10 @@ urlpatterns = [
         "auth/",
         include(("accounts.urls", "accounts"), namespace="accounts"),
     ),
-    path("providers/", include("providers.urls")),
+    path(
+        "providers/",
+        include(("providers.urls", "providers"), namespace="providers"),
+    ),
     path("appointments/", include("appointments.urls")),
     path("notifications/", include("notifications.urls")),
 ]
