@@ -7,7 +7,10 @@ app_name = "api_v1"
 
 urlpatterns = [
     path("health/", HealthCheckView.as_view(), name="health-check"),
-    path("auth/", include("accounts.urls")),
+    path(
+        "auth/",
+        include(("accounts.urls", "accounts"), namespace="accounts"),
+    ),
     path("providers/", include("providers.urls")),
     path("appointments/", include("appointments.urls")),
     path("notifications/", include("notifications.urls")),
