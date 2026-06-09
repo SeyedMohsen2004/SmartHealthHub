@@ -1,0 +1,2 @@
+"""Appointments data models."""
+

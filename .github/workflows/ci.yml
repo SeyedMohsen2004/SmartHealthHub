@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: smarthealthhub
+          POSTGRES_USER: smarthealthhub
+          POSTGRES_PASSWORD: smarthealthhub_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smarthealthhub -d smarthealthhub"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_SECRET_KEY: ci-secret-key
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      POSTGRES_DB: smarthealthhub
+      POSTGRES_USER: smarthealthhub
+      POSTGRES_PASSWORD: smarthealthhub_password
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check formatting
+        run: black --check .
+
+      - name: Lint
+        run: flake8 .
+
+      - name: Run Django checks
+        run: python manage.py check --deploy --settings=config.settings.production
+
+      - name: Run tests
+        run: pytest
