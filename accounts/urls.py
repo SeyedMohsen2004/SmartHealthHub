@@ -1,4 +1,5 @@
 """Accounts API URLs."""
+
 from django.urls import path
 
 from accounts.views import LoginAPIView, ProfileAPIView, RefreshAPIView, RegisterAPIView

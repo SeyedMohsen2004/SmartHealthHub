@@ -1,4 +1,5 @@
 """API views for accounts."""
+
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response

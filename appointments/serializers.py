@@ -1,4 +1,5 @@
 """Serializers for appointments."""
+
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import serializers

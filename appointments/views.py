@@ -1,4 +1,5 @@
 """API views for appointments."""
+
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, viewsets
@@ -98,10 +99,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return AppointmentSerializer
 
     def partial_update(self, request, *args, **kwargs):
-        if (
-            request.user.role == request.user.Roles.DOCTOR
-            and set(request.data.keys()) != {"status"}
-        ):
+        if request.user.role == request.user.Roles.DOCTOR and set(
+            request.data.keys()
+        ) != {"status"}:
             raise PermissionDenied("Doctors can only update appointment status.")
 
         return super().partial_update(request, *args, **kwargs)

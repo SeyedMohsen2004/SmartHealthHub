@@ -1,4 +1,5 @@
 """Versioned API URL configuration."""
+
 from django.urls import include, path
 
 from config.views import HealthCheckView

@@ -28,12 +28,11 @@ def test_user_can_list_own_notifications(api_client):
 
     api_client.force_authenticate(user=user)
 
-    response = api_client.get(
-        reverse("api_v1:notifications:notification-list")
-    )
+    response = api_client.get(reverse("api_v1:notifications:notification-list"))
 
     assert response.status_code == 200
     assert response.json()["count"] == 1
+
 
 @pytest.mark.django_db
 def test_user_cannot_see_other_users_notifications(api_client):
@@ -48,12 +47,11 @@ def test_user_cannot_see_other_users_notifications(api_client):
 
     api_client.force_authenticate(user=user1)
 
-    response = api_client.get(
-        reverse("api_v1:notifications:notification-list")
-    )
+    response = api_client.get(reverse("api_v1:notifications:notification-list"))
 
     assert response.status_code == 200
     assert response.json()["count"] == 0
+
 
 @pytest.mark.django_db
 def test_admin_can_see_all_notifications(api_client):
@@ -67,18 +65,15 @@ def test_admin_can_see_all_notifications(api_client):
 
     api_client.force_authenticate(user=admin)
 
-    response = api_client.get(
-        reverse("api_v1:notifications:notification-list")
-    )
+    response = api_client.get(reverse("api_v1:notifications:notification-list"))
 
     assert response.status_code == 200
     assert response.json()["count"] == 2
 
+
 @pytest.mark.django_db
 def test_notifications_require_authentication(api_client):
-    response = api_client.get(
-        reverse("api_v1:notifications:notification-list")
-    )
+    response = api_client.get(reverse("api_v1:notifications:notification-list"))
 
     assert response.status_code == 401
 

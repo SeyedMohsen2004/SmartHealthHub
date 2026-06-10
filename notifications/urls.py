@@ -1,4 +1,5 @@
 """Notifications API URLs."""
+
 from rest_framework.routers import DefaultRouter
 
 from notifications.views import NotificationViewSet

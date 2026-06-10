@@ -1,4 +1,5 @@
 """API views for providers."""
+
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, viewsets
@@ -18,8 +19,7 @@ class IsAdminRoleOrReadOnly(permissions.BasePermission):
             return True
 
         return (
-            request.user.is_superuser
-            or request.user.role == request.user.Roles.ADMIN
+            request.user.is_superuser or request.user.role == request.user.Roles.ADMIN
         )
 
 

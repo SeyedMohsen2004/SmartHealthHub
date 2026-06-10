@@ -1,4 +1,5 @@
 """Admin configuration for providers."""
+
 from django.contrib import admin
 
 from providers.models import Provider

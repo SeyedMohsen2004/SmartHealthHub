@@ -56,6 +56,7 @@ def test_authenticated_user_can_list_providers(api_client):
     assert response.status_code == 200
     assert response.json()["results"][0]["specialization"] == "Cardiology"
 
+
 @pytest.mark.django_db
 def test_unauthenticated_user_cannot_list_providers(api_client):
     response = api_client.get(reverse("api_v1:providers:provider-list"))

@@ -1,4 +1,5 @@
 """Appointments API URLs."""
+
 from rest_framework.routers import DefaultRouter
 
 from appointments.views import AppointmentViewSet

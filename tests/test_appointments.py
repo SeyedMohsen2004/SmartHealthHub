@@ -104,10 +104,8 @@ def test_patient_sees_only_own_appointments(api_client):
     response = api_client.get(reverse("api_v1:appointments:appointment-list"))
 
     assert response.status_code == 200
-    assert [
-        item["id"]
-        for item in response.json()["results"]
-    ] == [own_appointment.id]
+    assert [item["id"] for item in response.json()["results"]] == [own_appointment.id]
+
 
 @pytest.mark.django_db
 def test_doctor_sees_assigned_provider_appointments(api_client):
@@ -121,10 +119,8 @@ def test_doctor_sees_assigned_provider_appointments(api_client):
     response = api_client.get(reverse("api_v1:appointments:appointment-list"))
 
     assert response.status_code == 200
-    assert [
-        item["id"]
-        for item in response.json()["results"]
-    ] == [assigned.id]
+    assert [item["id"] for item in response.json()["results"]] == [assigned.id]
+
 
 @pytest.mark.django_db
 def test_admin_sees_all_appointments(api_client):
@@ -139,6 +135,7 @@ def test_admin_sees_all_appointments(api_client):
 
     assert response.status_code == 200
     assert response.json()["count"] == 2
+
 
 @pytest.mark.django_db
 def test_duplicate_appointment_rejected(api_client):
@@ -319,10 +316,8 @@ def test_filter_appointments(api_client):
     )
 
     assert response.status_code == 200
-    assert [
-        item["id"]
-        for item in response.json()["results"]
-    ] == [expected.id]
+    assert [item["id"] for item in response.json()["results"]] == [expected.id]
+
 
 @pytest.mark.django_db
 def test_search_appointments(api_client):
@@ -338,7 +333,4 @@ def test_search_appointments(api_client):
     )
 
     assert response.status_code == 200
-    assert [
-        item["id"]
-        for item in response.json()["results"]
-    ] == [expected.id]
+    assert [item["id"] for item in response.json()["results"]] == [expected.id]

@@ -1,4 +1,5 @@
 """Project-level API views."""
+
 from django.db import connection
 from django.db.utils import OperationalError
 from rest_framework import status
