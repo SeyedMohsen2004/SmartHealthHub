@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: ["main", "develop"]
@@ -9,6 +12,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -27,9 +31,11 @@ jobs:
 
     env:
       DJANGO_SETTINGS_MODULE: config.settings.test
-      DJANGO_SECRET_KEY: ci-secret-key
+      DJANGO_SECRET_KEY: ci-only-synthetic-secret-key-with-more-than-fifty-characters
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_CSRF_TRUSTED_ORIGINS: https://localhost
+      DJANGO_TRUST_X_FORWARDED_PROTO: "False"
       POSTGRES_DB: smarthealthhub
       POSTGRES_USER: smarthealthhub
       POSTGRES_PASSWORD: smarthealthhub_password
@@ -51,6 +57,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Validate dependency consistency
+        run: pip check
+
+      - name: Validate Docker Compose configuration
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+
       - name: Check formatting
         run: black --check .
 
@@ -58,7 +72,28 @@ jobs:
         run: flake8 .
 
       - name: Run Django checks
-        run: python manage.py check --deploy --settings=config.settings.production
+        run: |
+          python manage.py check
+          python manage.py check --deploy --settings=config.settings.production
 
-      - name: Run tests
-        run: pytest
+      - name: Check migration drift
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Validate OpenAPI schema
+        run: >-
+          python manage.py spectacular
+          --file /tmp/schema.yml
+          --validate
+          --fail-on-warn
+
+      - name: Run tests with branch coverage
+        run: >-
+          pytest
+          --cov=accounts
+          --cov=appointments
+          --cov=config
+          --cov=notifications
+          --cov=providers
+          --cov-branch
+          --cov-report=term-missing
+          --cov-fail-under=90

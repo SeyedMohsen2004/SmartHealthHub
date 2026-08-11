@@ -51,7 +51,7 @@ Backend API for a healthcare appointment management platform built with Django R
 - Automated Testing with Pytest
 - GitHub Actions CI
 - Environment-based Settings
-- Production-ready Django Configuration
+- Environment-specific Django settings
 
 ---
 
@@ -118,11 +118,31 @@ Build and start services:
 docker compose up --build
 ```
 
-Run migrations:
+The current container entrypoint waits for PostgreSQL, runs migrations, and
+collects static files before starting the configured command. That behavior is
+convenient for local development; separating release tasks from application
+startup is deliberately deferred to the production container hardening phase.
+
+Run a one-off migration command when needed:
 
 ```bash
 docker compose exec api python manage.py migrate
 ```
+
+### Production environment
+
+`config.settings.production` fails fast unless these values are supplied:
+
+- `DJANGO_SECRET_KEY`
+- `DJANGO_ALLOWED_HOSTS`
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_HOST`
+
+Set `DJANGO_TRUST_X_FORWARDED_PROTO=True` only when Django is behind a trusted
+proxy that overwrites the `X-Forwarded-Proto` header. The Compose file is a
+local-development configuration and is not a production deployment manifest.
 
 ---
 
@@ -192,16 +212,27 @@ http://localhost:8000/api/v1/health/
 
 ## Running Tests
 
-Run all tests:
+Run all tests in the API container with the isolated test settings:
 
 ```bash
-docker compose exec api pytest
+docker compose exec -e DJANGO_SETTINGS_MODULE=config.settings.test api pytest
 ```
 
-Current status:
+Run the same branch-aware coverage measurement enforced by CI:
+
+```bash
+docker compose exec -e DJANGO_SETTINGS_MODULE=config.settings.test api pytest \
+  --cov=accounts --cov=appointments --cov=config --cov=notifications \
+  --cov=providers --cov-branch --cov-report=term-missing --cov-fail-under=90
+```
+
+Current baseline:
 
 ```text
-38 tests passing
+48 tests passing
+94.84% statement coverage
+82.43% branch coverage
+93.44% combined coverage
 ```
 
 ---
@@ -234,8 +265,12 @@ GitHub Actions automatically runs:
 
 - Black
 - Flake8
-- Django Deploy Checks
-- Pytest
+- Django system and deployment checks
+- Migration drift detection
+- OpenAPI validation with warnings treated as failures
+- Pytest with statement and branch coverage (90% combined floor)
+- Dependency consistency checks
+- Docker Compose configuration validation
 
 On:
 
