@@ -35,6 +35,9 @@ Backend API for a healthcare appointment management platform built with Django R
 - Search and filtering
 - Pagination support
 
+See [Appointment domain rules](docs/appointments.md) for lifecycle,
+cancelled-slot reuse, permissions, and concurrency guarantees.
+
 ### Notifications Management
 
 - User notifications

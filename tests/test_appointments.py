@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from appointments import services
 from appointments.models import Appointment
 from providers.models import Provider
 
@@ -162,7 +163,7 @@ def test_duplicate_appointment_rejected(api_client):
     )
 
     assert response.status_code == 400
-    assert "already has an appointment" in str(response.json())
+    assert response.json() == {"non_field_errors": [services.SLOT_CONFLICT_MESSAGE]}
 
 
 @pytest.mark.django_db
