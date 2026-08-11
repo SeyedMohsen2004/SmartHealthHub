@@ -13,16 +13,14 @@ ENV PATH="/opt/venv/bin:$PATH"
 WORKDIR /build
 COPY requirements.txt ./requirements.txt
 
-# The dependency-file split is intentionally deferred. Keep the production
-# image free of the five existing top-level development/test tools meanwhile.
-RUN grep -Ev '^(pytest|pytest-django|pytest-cov|black|flake8)([<>=!~ ]|$)' \
-        requirements.txt > runtime-requirements.txt \
-    && pip install --requirement runtime-requirements.txt
+RUN pip install --require-hashes --requirement requirements.txt \
+    && pip check
 
 
 FROM runtime-builder AS development-builder
 
-RUN pip install --requirement requirements.txt
+COPY requirements-dev.txt ./requirements-dev.txt
+RUN pip install --require-hashes --requirement requirements-dev.txt
 
 
 FROM python:3.12-slim AS application
@@ -73,6 +71,10 @@ CMD ["gunicorn", "--config", "gunicorn.conf.py", "config.wsgi:application"]
 FROM application AS runtime
 
 COPY --from=runtime-builder /opt/venv /opt/venv
+
+# The final image needs application packages, not installers or build tooling.
+RUN /opt/venv/bin/python -m pip uninstall --yes pip setuptools wheel \
+    && /usr/local/bin/python -m pip uninstall --yes pip setuptools wheel
 
 USER appuser:appgroup
 
