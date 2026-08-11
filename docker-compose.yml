@@ -1,6 +1,23 @@
 services:
+  migrate:
+    image: smarthealthhub:development
+    build:
+      context: .
+      target: development
+    command: python manage.py migrate --noinput
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
   api:
-    build: .
+    image: smarthealthhub:development
+    build:
+      context: .
+      target: development
     command: python manage.py runserver 0.0.0.0:8000
     env_file:
       - .env
@@ -9,8 +26,8 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   db:
     image: postgres:16-alpine

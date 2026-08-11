@@ -97,3 +97,82 @@ jobs:
           --cov-branch
           --cov-report=term-missing
           --cov-fail-under=90
+
+  production-runtime:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      COMPOSE_PROJECT_NAME: smarthealthhub-ci
+      IMAGE_TAG: ci
+      APP_PORT: "18000"
+      DJANGO_SECRET_KEY: ci-only-synthetic-secret-key-with-more-than-fifty-characters
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_CSRF_TRUSTED_ORIGINS: https://localhost
+      DJANGO_TRUST_X_FORWARDED_PROTO: "True"
+      DJANGO_SECURE_SSL_REDIRECT: "True"
+      POSTGRES_DB: smarthealthhub_runtime
+      POSTGRES_USER: smarthealthhub_runtime
+      POSTGRES_PASSWORD: synthetic-runtime-password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate production Compose configuration
+        run: docker compose -f docker-compose.prod.yml config --quiet
+
+      - name: Build production image
+        run: docker compose -f docker-compose.prod.yml build release
+
+      - name: Start and verify production stack
+        run: |
+          compose=(docker compose -f docker-compose.prod.yml)
+          "${compose[@]}" up --detach --wait --wait-timeout 120
+
+          release_id="$("${compose[@]}" ps --all --quiet release)"
+          test -n "$release_id"
+          test "$(docker inspect --format '{{.State.ExitCode}}' "$release_id")" = "0"
+
+          test "$("${compose[@]}" run --rm --no-deps --entrypoint id web -u)" = "10001"
+          "${compose[@]}" run --rm --no-deps --entrypoint sh web -c \
+            "! command -v gcc && ! command -v make && ! command -v pytest && ! command -v black && ! command -v flake8"
+          "${compose[@]}" exec -T web python -c \
+            "assert b'gunicorn' in open('/proc/1/cmdline', 'rb').read()"
+          "${compose[@]}" exec -T web python manage.py migrate --check
+          "${compose[@]}" exec -T web python -c \
+            "import os; from pathlib import Path; assert not os.access('/app/manage.py', os.W_OK); assert Path('/app/staticfiles/admin/css/base.css').is_file(); p = Path('/app/media/.ci-write-test'); p.write_text('ok'); p.unlink()"
+          curl --fail --silent --show-error \
+            --header "X-Forwarded-Proto: https" \
+            http://127.0.0.1:18000/api/v1/health/
+
+          if docker history --no-trunc "smarthealthhub:${IMAGE_TAG}" \
+            | grep --fixed-strings --quiet "$DJANGO_SECRET_KEY"; then
+            echo "Synthetic runtime secret was found in image history."
+            exit 1
+          fi
+
+          release_id_before="$release_id"
+          "${compose[@]}" restart web
+          for attempt in {1..30}; do
+            if curl --fail --silent \
+              --header "X-Forwarded-Proto: https" \
+              http://127.0.0.1:18000/api/v1/health/ >/dev/null; then
+              break
+            fi
+            if [ "$attempt" = "30" ]; then
+              echo "Web did not become ready after restart."
+              exit 1
+            fi
+            sleep 1
+          done
+          test "$("${compose[@]}" ps --all --quiet release)" = "$release_id_before"
+
+      - name: Show production service logs
+        if: always()
+        run: docker compose -f docker-compose.prod.yml logs --no-color
+
+      - name: Remove production smoke stack
+        if: always()
+        run: docker compose -f docker-compose.prod.yml down --volumes --remove-orphans
