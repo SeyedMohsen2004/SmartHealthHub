@@ -1,15 +1,6 @@
 #!/bin/sh
-set -e
+set -eu
 
-if [ -n "$POSTGRES_HOST" ]; then
-  postgres_port="${POSTGRES_PORT:-5432}"
-  echo "Waiting for PostgreSQL at $POSTGRES_HOST:$postgres_port..."
-  while ! nc -z "$POSTGRES_HOST" "$postgres_port"; do
-    sleep 1
-  done
-fi
-
-python manage.py migrate --noinput
-python manage.py collectstatic --noinput
-
+# Keep PID 1 as the configured process so Unix signals reach Gunicorn directly.
+# Database migrations and static collection are explicit release responsibilities.
 exec "$@"

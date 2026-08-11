@@ -118,18 +118,69 @@ Build and start services:
 docker compose up --build
 ```
 
-The current container entrypoint waits for PostgreSQL, runs migrations, and
-collects static files before starting the configured command. That behavior is
-convenient for local development; separating release tasks from application
-startup is deliberately deferred to the production container hardening phase.
+The development Compose file uses a source bind mount and Django's development
+server. A one-shot `migrate` service applies migrations after PostgreSQL is
+healthy, then the API starts. Django serves development static files directly;
+the API container itself does not run migrations or `collectstatic`.
 
 Run a one-off migration command when needed:
 
 ```bash
-docker compose exec api python manage.py migrate
+docker compose run --rm migrate
 ```
 
-### Production environment
+### Production-oriented containers
+
+`docker-compose.prod.yml` is an opt-in production-oriented topology; it does
+not deploy the project to a server. Copy the blank template and supply strong,
+private values:
+
+```bash
+cp .env.production.example .env.production
+```
+
+Build the shared application image, then start the stack:
+
+```bash
+docker compose --env-file .env.production \
+  -f docker-compose.prod.yml build release
+docker compose --env-file .env.production \
+  -f docker-compose.prod.yml up --detach --wait
+```
+
+The topology contains only PostgreSQL, a one-shot `release` service, and the
+Gunicorn `web` service. PostgreSQL must be healthy before `release` runs;
+`release` must successfully run migrations and collect static files before
+`web` starts. Static files are collected into a named volume and mounted
+read-only into `web` for WhiteNoise. Media and database data use separate
+persistent volumes. Restarting only `web` does not rerun migrations.
+
+The multi-stage Python 3.12 image keeps compilers in the builder stage and runs
+as the dedicated `appuser` account (`10001:10001` by default). Gunicorn is PID
+1, logs to stdout/stderr, and uses conservative environment-driven defaults.
+Worker sizing remains deployment-dependent.
+
+The web port is bound to `127.0.0.1` by default. A production operator remains
+responsible for a trusted reverse proxy, public routing, TLS certificates, and
+HTTPS enforcement. The image health check uses `/api/v1/health/`, including its
+existing PostgreSQL readiness query. When HTTPS is terminated upstream, enable
+forwarded-protocol trust only if that proxy overwrites `X-Forwarded-Proto`.
+Set both forwarded-protocol trust and Django's HTTPS redirect behavior
+explicitly. The checked-in blank template assumes a trusted TLS-terminating
+proxy; use `False` for both only when HTTPS enforcement is handled entirely
+outside Django.
+
+The application image never runs migrations or destructive database operations
+from its entrypoint. To run the release task explicitly during a later rollout:
+
+```bash
+docker compose --env-file .env.production \
+  -f docker-compose.prod.yml run --rm release
+docker compose --env-file .env.production \
+  -f docker-compose.prod.yml up --detach web
+```
+
+### Production environment validation
 
 `config.settings.production` fails fast unless these values are supplied:
 
@@ -141,8 +192,9 @@ docker compose exec api python manage.py migrate
 - `POSTGRES_HOST`
 
 Set `DJANGO_TRUST_X_FORWARDED_PROTO=True` only when Django is behind a trusted
-proxy that overwrites the `X-Forwarded-Proto` header. The Compose file is a
-local-development configuration and is not a production deployment manifest.
+proxy that overwrites the `X-Forwarded-Proto` header. Keep it false otherwise.
+Neither Compose definition performs an automatic production deployment or
+creates demo data.
 
 ---
 
@@ -271,6 +323,7 @@ GitHub Actions automatically runs:
 - Pytest with statement and branch coverage (90% combined floor)
 - Dependency consistency checks
 - Docker Compose configuration validation
+- Production image build and disposable runtime smoke test
 
 On:
 

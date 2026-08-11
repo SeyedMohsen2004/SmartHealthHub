@@ -2,7 +2,6 @@
 .github
 .env
 .env.*
-!.env.example
 .venv
 venv
 env
@@ -11,8 +10,12 @@ __pycache__
 .pytest_cache
 .coverage
 htmlcov
+tests
 staticfiles
 media
+*.sqlite3
+docker-compose*.yml
+README.md
 *.log
 .idea
 .vscode
