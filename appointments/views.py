@@ -104,9 +104,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return AppointmentSerializer
 
     def partial_update(self, request, *args, **kwargs):
-        if request.user.role == request.user.Roles.DOCTOR and set(
-            request.data.keys()
-        ) != {"status"}:
+        if (
+            not request.user.is_superuser
+            and request.user.role == request.user.Roles.DOCTOR
+            and set(request.data.keys()) != {"status"}
+        ):
             raise PermissionDenied("Doctors can only update appointment status.")
 
         return super().partial_update(request, *args, **kwargs)
