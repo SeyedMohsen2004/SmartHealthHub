@@ -175,10 +175,16 @@ from its entrypoint. To run the release task explicitly during a later rollout:
 
 ```bash
 docker compose --env-file .env.production \
+  -f docker-compose.prod.yml up --detach db
+docker compose --env-file .env.production \
   -f docker-compose.prod.yml run --rm release
 docker compose --env-file .env.production \
-  -f docker-compose.prod.yml up --detach web
+  -f docker-compose.prod.yml up --detach --no-deps web
 ```
+
+Use `--no-deps` in that sequence only after the release command exits
+successfully. A normal first-time `up --detach --wait` retains Compose's
+database-health and successful-release dependency ordering automatically.
 
 ### Production environment validation
 
