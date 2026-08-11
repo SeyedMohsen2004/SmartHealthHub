@@ -40,7 +40,8 @@ class Appointment(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["provider", "appointment_date", "appointment_time"],
-                name="unique_provider_appointment_slot",
+                condition=~models.Q(status="CANCELLED"),
+                name="unique_active_provider_appointment_slot",
             )
         ]
         indexes = [

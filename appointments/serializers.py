@@ -1,12 +1,16 @@
 """Serializers for appointments."""
 
-from datetime import datetime
-
-from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import serializers
 
 from appointments.models import Appointment
+from appointments.services import (
+    AppointmentMutationError,
+    create_appointment,
+    update_appointment,
+    validate_appointment_changes,
+    validate_new_appointment,
+)
 
 
 class AppointmentSerializer(serializers.ModelSerializer):
@@ -56,34 +60,29 @@ class AppointmentSerializer(serializers.ModelSerializer):
             getattr(self.instance, "appointment_time", None),
         )
 
-        scheduling_changed = self.instance is None or any(
-            field in attrs
-            for field in ("provider", "appointment_date", "appointment_time")
-        )
-        if scheduling_changed and appointment_date and appointment_time:
-            scheduled_at = timezone.make_aware(
-                datetime.combine(appointment_date, appointment_time),
-                timezone.get_current_timezone(),
-            )
-            if scheduled_at <= timezone.now():
-                raise serializers.ValidationError(
-                    {"appointment_time": "Appointment time must be in the future."}
-                )
-
-        if provider and appointment_date and appointment_time:
-            queryset = Appointment.objects.filter(
-                provider=provider,
-                appointment_date=appointment_date,
-                appointment_time=appointment_time,
-            )
-            if self.instance:
-                queryset = queryset.exclude(pk=self.instance.pk)
-            if queryset.exists():
-                raise serializers.ValidationError(
-                    "This provider already has an appointment at this date and time."
-                )
+        try:
+            if self.instance is None:
+                if provider and appointment_date and appointment_time:
+                    validate_new_appointment(
+                        provider=provider,
+                        appointment_date=appointment_date,
+                        appointment_time=appointment_time,
+                    )
+            else:
+                validate_appointment_changes(self.instance, attrs)
+        except AppointmentMutationError as exc:
+            raise serializers.ValidationError(exc.detail) from exc
 
         return attrs
+
+    def update(self, instance, validated_data):
+        try:
+            return update_appointment(
+                appointment_id=instance.pk,
+                validated_data=validated_data,
+            )
+        except AppointmentMutationError as exc:
+            raise serializers.ValidationError(exc.detail) from exc
 
 
 class AppointmentCreateSerializer(AppointmentSerializer):
@@ -98,16 +97,12 @@ class AppointmentCreateSerializer(AppointmentSerializer):
             "updated_at",
         )
 
-    @transaction.atomic
     def create(self, validated_data):
         request = self.context["request"]
         try:
-            return Appointment.objects.create(
+            return create_appointment(
                 patient=request.user,
-                status=Appointment.Status.PENDING,
-                **validated_data,
+                validated_data=validated_data,
             )
-        except IntegrityError as exc:
-            raise serializers.ValidationError(
-                "This provider already has an appointment at this date and time."
-            ) from exc
+        except AppointmentMutationError as exc:
+            raise serializers.ValidationError(exc.detail) from exc
