@@ -3,11 +3,19 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db import IntegrityError, transaction
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
+
+
+class TokenPairSerializer(serializers.Serializer):
+    """Document the access and refresh tokens returned at registration."""
+
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(read_only=True)
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -108,6 +116,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         return user
 
+    @extend_schema_field(TokenPairSerializer)
     def get_tokens(self, obj):
         refresh = RefreshToken.for_user(obj)
         return {

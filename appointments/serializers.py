@@ -1,5 +1,7 @@
 """Serializers for appointments."""
 
+from datetime import datetime
+
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import serializers
@@ -53,6 +55,20 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "appointment_time",
             getattr(self.instance, "appointment_time", None),
         )
+
+        scheduling_changed = self.instance is None or any(
+            field in attrs
+            for field in ("provider", "appointment_date", "appointment_time")
+        )
+        if scheduling_changed and appointment_date and appointment_time:
+            scheduled_at = timezone.make_aware(
+                datetime.combine(appointment_date, appointment_time),
+                timezone.get_current_timezone(),
+            )
+            if scheduled_at <= timezone.now():
+                raise serializers.ValidationError(
+                    {"appointment_time": "Appointment time must be in the future."}
+                )
 
         if provider and appointment_date and appointment_time:
             queryset = Appointment.objects.filter(

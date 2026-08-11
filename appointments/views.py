@@ -66,6 +66,7 @@ class AppointmentPermission(permissions.BasePermission):
 class AppointmentViewSet(viewsets.ModelViewSet):
     """Manage appointments with role-scoped query access."""
 
+    queryset = Appointment.objects.select_related("patient", "provider__user")
     serializer_class = AppointmentSerializer
     permission_classes = (AppointmentPermission,)
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
@@ -80,8 +81,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     ordering = ("appointment_date", "appointment_time")
 
     def get_queryset(self):
+        queryset = super().get_queryset()
+
+        if getattr(self, "swagger_fake_view", False):
+            return queryset.none()
+
         user = self.request.user
-        queryset = Appointment.objects.select_related("patient", "provider__user")
 
         if user.is_superuser or user.role == user.Roles.ADMIN:
             return queryset

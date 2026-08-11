@@ -15,14 +15,18 @@ from notifications.serializers import NotificationSerializer
 class NotificationViewSet(viewsets.ModelViewSet):
     """Manage user notifications."""
 
+    queryset = Notification.objects.select_related("user")
     serializer_class = NotificationSerializer
     permission_classes = (permissions.IsAuthenticated,)
     http_method_names = ["get", "patch", "head", "options"]
 
     def get_queryset(self):
-        user = self.request.user
+        queryset = super().get_queryset()
 
-        queryset = Notification.objects.select_related("user")
+        if getattr(self, "swagger_fake_view", False):
+            return queryset.none()
+
+        user = self.request.user
 
         if user.is_superuser or user.role == user.Roles.ADMIN:
             return queryset

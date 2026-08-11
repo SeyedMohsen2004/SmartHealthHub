@@ -2,9 +2,18 @@
 
 from django.db import connection
 from django.db.utils import OperationalError
+from drf_spectacular.utils import extend_schema
+from rest_framework import serializers
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+
+class HealthCheckResponseSerializer(serializers.Serializer):
+    """Document the bounded readiness response."""
+
+    status = serializers.CharField()
+    database = serializers.CharField()
 
 
 class HealthCheckView(APIView):
@@ -13,6 +22,12 @@ class HealthCheckView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(
+        responses={
+            status.HTTP_200_OK: HealthCheckResponseSerializer,
+            status.HTTP_503_SERVICE_UNAVAILABLE: HealthCheckResponseSerializer,
+        }
+    )
     def get(self, request):
         database_status = "ok"
         response_status = status.HTTP_200_OK

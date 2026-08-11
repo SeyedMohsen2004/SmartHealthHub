@@ -2,8 +2,9 @@
 set -e
 
 if [ -n "$POSTGRES_HOST" ]; then
-  echo "Waiting for PostgreSQL at $POSTGRES_HOST:$POSTGRES_PORT..."
-  while ! nc -z "$POSTGRES_HOST" "${POSTGRES_PORT:-5432}"; do
+  postgres_port="${POSTGRES_PORT:-5432}"
+  echo "Waiting for PostgreSQL at $POSTGRES_HOST:$postgres_port..."
+  while ! nc -z "$POSTGRES_HOST" "$postgres_port"; do
     sleep 1
   done
 fi

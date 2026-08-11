@@ -1,8 +1,3 @@
 [tool.black]
 line-length = 88
 target-version = ["py312"]
-
-[tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.test"
-python_files = ["test_*.py", "*_tests.py"]
-addopts = "-ra --strict-markers --disable-warnings"

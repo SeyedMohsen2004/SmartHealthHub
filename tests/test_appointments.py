@@ -1,9 +1,13 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import time, timedelta
+from threading import Barrier
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connections
 from django.urls import reverse
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from appointments.models import Appointment
 from providers.models import Provider
@@ -181,6 +185,61 @@ def test_appointment_date_cannot_be_in_past(api_client):
 
 
 @pytest.mark.django_db
+def test_appointment_time_cannot_be_in_past_today(api_client):
+    patient = create_user("patient@example.com", User.Roles.PATIENT)
+    provider = create_provider()
+    api_client.force_authenticate(user=patient)
+
+    response = api_client.post(
+        reverse("api_v1:appointments:appointment-list"),
+        appointment_payload(
+            provider,
+            appointment_date=timezone.localdate(),
+            appointment_time="00:00:00",
+        ),
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "appointment_time" in response.json()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_bookings_allow_only_one_appointment():
+    first_patient = create_user("first@example.com", User.Roles.PATIENT)
+    second_patient = create_user("second@example.com", User.Roles.PATIENT)
+    provider = create_provider()
+    payload = appointment_payload(provider)
+    barrier = Barrier(2)
+
+    def book(patient):
+        connections.close_all()
+        client = APIClient()
+        client.force_authenticate(user=patient)
+        barrier.wait(timeout=5)
+        response = client.post(
+            reverse("api_v1:appointments:appointment-list"),
+            payload,
+            format="json",
+        )
+        connections.close_all()
+        return response.status_code
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        statuses = list(executor.map(book, (first_patient, second_patient)))
+
+    assert sorted(statuses) == [201, 400]
+    assert (
+        Appointment.objects.filter(
+            provider=provider,
+            appointment_date=payload["appointment_date"],
+            appointment_time=payload["appointment_time"],
+        ).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
 def test_admin_can_update_appointment_status(api_client):
     admin = create_user("admin@example.com", User.Roles.ADMIN)
     patient = create_user("patient@example.com", User.Roles.PATIENT)
@@ -264,6 +323,24 @@ def test_patient_cannot_update_appointment(api_client):
     appointment.refresh_from_db()
     assert response.status_code == 403
     assert appointment.status == Appointment.Status.PENDING
+
+
+@pytest.mark.django_db
+def test_patient_cannot_retrieve_another_patients_appointment(api_client):
+    patient = create_user("patient@example.com", User.Roles.PATIENT)
+    other_patient = create_user("other@example.com", User.Roles.PATIENT)
+    provider = create_provider()
+    appointment = create_appointment(other_patient, provider)
+    api_client.force_authenticate(user=patient)
+
+    response = api_client.get(
+        reverse(
+            "api_v1:appointments:appointment-detail",
+            kwargs={"pk": appointment.id},
+        )
+    )
+
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db
