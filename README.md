@@ -97,6 +97,17 @@ SmartHealthHub/
 
 ---
 
+## Python Dependencies
+
+Runtime and development dependencies are maintained as separate direct source
+sets and generated, hash-locked installation files. Production installs only
+`requirements.txt`; local development and CI install `requirements-dev.txt`.
+
+See [Python dependency maintenance](docs/dependencies.md) for deterministic
+installation, lock regeneration, advisory-audit, and SBOM commands.
+
+---
+
 ## Running With Docker
 
 Clone the repository:
@@ -327,7 +338,8 @@ GitHub Actions automatically runs:
 - Migration drift detection
 - OpenAPI validation with warnings treated as failures
 - Pytest with statement and branch coverage (90% combined floor)
-- Dependency consistency checks
+- Dependency lock freshness, consistency, and runtime/development advisory scans
+- Runtime Python CycloneDX SBOM artifact generation
 - Docker Compose configuration validation
 - Production image build and disposable runtime smoke test
 

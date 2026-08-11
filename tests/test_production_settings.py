@@ -4,7 +4,6 @@ import sys
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 
-
 VALID_ENVIRONMENT = {
     "DJANGO_SECRET_KEY": (
         "synthetic-production-secret-key-with-more-than-fifty-characters"
