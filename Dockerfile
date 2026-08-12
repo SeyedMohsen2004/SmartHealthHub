@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS runtime-builder
+FROM python:3.12-slim@sha256:229a2c5bfa27522db7815ea81f9bed70af17ccb9de9fc7ad142b1877b5830d36 AS runtime-builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
@@ -23,7 +23,7 @@ COPY requirements-dev.txt ./requirements-dev.txt
 RUN pip install --require-hashes --requirement requirements-dev.txt
 
 
-FROM python:3.12-slim AS application
+FROM python:3.12-slim@sha256:229a2c5bfa27522db7815ea81f9bed70af17ccb9de9fc7ad142b1877b5830d36 AS application
 
 ARG APP_UID=10001
 ARG APP_GID=10001
