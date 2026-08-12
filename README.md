@@ -44,15 +44,21 @@ cancelled-slot reuse, permissions, and concurrency guarantees.
 ### Notifications Management
 
 - User notifications
+- Durable in-app appointment reminders through PostgreSQL reconciliation,
+  Celery Beat, Redis, and a Celery worker
 - Mark notifications as read
 - User-specific notification access
 - Admin access to all notifications
 - Pagination support
 
+See [Appointment reminders](docs/reminders.md) for reminder policy,
+idempotency, recovery, rescheduling, and operational boundaries.
+
 ### Infrastructure
 
 - Docker & Docker Compose
 - PostgreSQL
+- Redis and Celery
 - Swagger / OpenAPI Documentation
 - Automated Testing with Pytest
 - GitHub Actions CI
@@ -165,12 +171,14 @@ docker compose --env-file .env.production \
   -f docker-compose.prod.yml up --detach --wait
 ```
 
-The topology contains only PostgreSQL, a one-shot `release` service, and the
-Gunicorn `web` service. PostgreSQL must be healthy before `release` runs;
-`release` must successfully run migrations and collect static files before
-`web` starts. Static files are collected into a named volume and mounted
-read-only into `web` for WhiteNoise. Media and database data use separate
-persistent volumes. Restarting only `web` does not rerun migrations.
+The topology contains PostgreSQL, Redis, a one-shot `release` service, Gunicorn
+`web`, a Celery `worker`, and exactly one Celery `beat` scheduler. PostgreSQL
+must be healthy before `release` runs; `release` must successfully run
+migrations and collect static files before application processes start. Redis
+must be healthy before worker and Beat start, but normal web requests and the
+health endpoint do not depend on Redis. Static files are collected into a named
+volume and mounted read-only into `web`. Media, database, and Redis data use
+separate persistent volumes. Restarting only `web` does not rerun migrations.
 
 The multi-stage Python 3.12 image keeps compilers in the builder stage and runs
 as the dedicated `appuser` account (`10001:10001` by default). Gunicorn is PID
@@ -304,10 +312,10 @@ docker compose exec -e DJANGO_SETTINGS_MODULE=config.settings.test api pytest \
 Current baseline:
 
 ```text
-48 tests passing
-94.84% statement coverage
-82.43% branch coverage
-93.44% combined coverage
+111 tests passing
+95.30% statement coverage
+83.96% branch coverage
+93.96% combined branch-aware coverage (90% CI gate)
 ```
 
 ---
@@ -347,7 +355,7 @@ GitHub Actions automatically runs:
 - Dependency lock freshness, consistency, and runtime/development advisory scans
 - Runtime Python CycloneDX SBOM artifact generation
 - Docker Compose configuration validation
-- Production image build and disposable runtime smoke test
+- Production image build and disposable web/worker/Beat/Redis reminder smoke
 
 On:
 
@@ -375,8 +383,7 @@ Implemented:
 Future Improvements:
 
 - Email Notifications
-- Appointment Reminder Scheduler
+- External reminder delivery channels
 - Audit Logs
 - Redis Caching
-- Background Tasks (Celery)
 - Monitoring & Observability

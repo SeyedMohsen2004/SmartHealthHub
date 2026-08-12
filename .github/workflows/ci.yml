@@ -180,16 +180,45 @@ jobs:
           test "$(docker inspect --format '{{.State.ExitCode}}' "$release_id")" = "0"
 
           test "$("${compose[@]}" run --rm --no-deps --entrypoint id web -u)" = "10001"
+          test "$("${compose[@]}" exec -T worker id -u)" = "10001"
+          test "$("${compose[@]}" exec -T beat id -u)" = "10001"
           "${compose[@]}" run --rm --no-deps --entrypoint sh web -c \
             "! command -v gcc && ! command -v make && ! command -v pip && ! command -v pip-compile && ! command -v pip-audit && ! command -v pytest && ! command -v black && ! command -v flake8"
           "${compose[@]}" exec -T web python -c \
             "assert b'gunicorn' in open('/proc/1/cmdline', 'rb').read()"
+          "${compose[@]}" exec -T worker python -c \
+            "assert b'celery' in open('/proc/1/cmdline', 'rb').read()"
+          "${compose[@]}" exec -T beat python -c \
+            "assert b'celery' in open('/proc/1/cmdline', 'rb').read()"
+          "${compose[@]}" exec -T redis redis-cli ping | grep --fixed-strings PONG
+          test "$("${compose[@]}" ps --all --status running --quiet beat | wc -l)" = "1"
           "${compose[@]}" exec -T web python manage.py migrate --check
           "${compose[@]}" exec -T web python -c \
             "import os; from pathlib import Path; assert not os.access('/app/manage.py', os.W_OK); assert Path('/app/staticfiles/admin/css/base.css').is_file(); p = Path('/app/media/.ci-write-test'); p.write_text('ok'); p.unlink()"
           curl --fail --silent --show-error \
             --header "X-Forwarded-Proto: https" \
             http://127.0.0.1:18000/api/v1/health/
+
+          "${compose[@]}" exec -T web python manage.py shell -c \
+            "from datetime import timedelta; from django.contrib.auth import get_user_model; from django.utils import timezone; from appointments.models import Appointment; from providers.models import Provider; User = get_user_model(); patient = User.objects.create_user(username='reminder-patient', email='reminder-patient@example.com', password='SyntheticPass123!', role=User.Roles.PATIENT); doctor = User.objects.create_user(username='reminder-doctor', email='reminder-doctor@example.com', password='SyntheticPass123!', role=User.Roles.DOCTOR, first_name='Synthetic', last_name='Doctor'); provider = Provider.objects.create(user=doctor, specialization='Test', medical_license_number='CI-REMINDER', experience_years=1, consultation_fee='1.00', is_verified=True); scheduled = timezone.localtime(timezone.now() + timedelta(hours=1)); Appointment.objects.create(patient=patient, provider=provider, appointment_date=scheduled.date(), appointment_time=scheduled.time().replace(tzinfo=None))"
+          "${compose[@]}" exec -T web python manage.py shell -c \
+            "from notifications.tasks import dispatch_due_appointment_reminders; dispatch_due_appointment_reminders.delay()"
+          for attempt in {1..30}; do
+            if "${compose[@]}" exec -T web python manage.py shell -c \
+              "import sys; from notifications.models import Notification; sys.exit(0 if Notification.objects.filter(kind=Notification.Kind.APPOINTMENT_REMINDER).count() == 1 else 1)"; then
+              break
+            fi
+            if [ "$attempt" = "30" ]; then
+              echo "Celery worker did not create the synthetic reminder."
+              exit 1
+            fi
+            sleep 1
+          done
+          "${compose[@]}" exec -T web python manage.py shell -c \
+            "from notifications.tasks import dispatch_due_appointment_reminders; dispatch_due_appointment_reminders.delay()"
+          sleep 2
+          "${compose[@]}" exec -T web python manage.py shell -c \
+            "from notifications.models import Notification; assert Notification.objects.filter(kind=Notification.Kind.APPOINTMENT_REMINDER).count() == 1"
 
           if docker history --no-trunc "smarthealthhub:${IMAGE_TAG}" \
             | grep --fixed-strings --quiet "$DJANGO_SECRET_KEY"; then
