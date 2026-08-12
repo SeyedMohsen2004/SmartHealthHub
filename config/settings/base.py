@@ -24,6 +24,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "django_filters",
 ]
@@ -114,6 +115,20 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": config("DRF_ANON_THROTTLE_RATE", default="100/hour"),
+        "user": config("DRF_USER_THROTTLE_RATE", default="1000/hour"),
+        "auth_register": config("DRF_AUTH_REGISTER_THROTTLE_RATE", default="5/hour"),
+        "auth_login": config("DRF_AUTH_LOGIN_THROTTLE_RATE", default="10/min"),
+        "auth_refresh": config("DRF_AUTH_REFRESH_THROTTLE_RATE", default="30/min"),
+        "auth_logout": config("DRF_AUTH_LOGOUT_THROTTLE_RATE", default="30/min"),
+    },
+    "NUM_PROXIES": config("DRF_NUM_PROXIES", default=0, cast=int),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
     "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.URLPathVersioning",
@@ -131,6 +146,8 @@ SIMPLE_JWT = {
         days=config("REFRESH_TOKEN_LIFETIME_DAYS", default=7, cast=int)
     ),
     "AUTH_HEADER_TYPES": ("Bearer",),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 SPECTACULAR_SETTINGS = {

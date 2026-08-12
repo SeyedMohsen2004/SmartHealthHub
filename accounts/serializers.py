@@ -6,9 +6,12 @@ from django.db import IntegrityError, transaction
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
+
+INVALID_REFRESH_MESSAGE = "Refresh token is invalid, expired, or already revoked."
 
 
 class TokenPairSerializer(serializers.Serializer):
@@ -16,6 +19,29 @@ class TokenPairSerializer(serializers.Serializer):
 
     access = serializers.CharField(read_only=True)
     refresh = serializers.CharField(read_only=True)
+
+
+class RefreshRequestSerializer(serializers.Serializer):
+    """Document the refresh token accepted for rotation."""
+
+    refresh = serializers.CharField(write_only=True)
+
+
+class LogoutSerializer(serializers.Serializer):
+    """Revoke one supplied refresh token without requiring an access token."""
+
+    refresh = serializers.CharField(
+        write_only=True,
+        allow_blank=True,
+        error_messages={"required": INVALID_REFRESH_MESSAGE},
+    )
+
+    def validate_refresh(self, value):
+        try:
+            RefreshToken(value).blacklist()
+        except TokenError as exc:
+            raise serializers.ValidationError(INVALID_REFRESH_MESSAGE) from exc
+        return value
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -166,4 +192,4 @@ class LoginSerializer(serializers.Serializer):
 
 
 class RefreshSerializer(TokenRefreshSerializer):
-    """Refresh JWT access tokens."""
+    """Rotate a refresh token and return a new access/refresh pair."""

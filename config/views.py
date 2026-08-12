@@ -21,6 +21,7 @@ class HealthCheckView(APIView):
 
     authentication_classes = []
     permission_classes = []
+    throttle_classes = []
 
     @extend_schema(
         responses={
