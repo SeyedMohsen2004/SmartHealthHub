@@ -16,7 +16,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
         env:
           POSTGRES_DB: smarthealthhub
           POSTGRES_USER: smarthealthhub
@@ -145,7 +145,7 @@ jobs:
   production-runtime:
     needs: test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     env:
       COMPOSE_PROJECT_NAME: smarthealthhub-ci
@@ -159,6 +159,10 @@ jobs:
       POSTGRES_DB: smarthealthhub_runtime
       POSTGRES_USER: smarthealthhub_runtime
       POSTGRES_PASSWORD: synthetic-runtime-password
+      TRIVY_VERSION: 0.73.0
+      TRIVY_ARCHIVE_SHA256: 2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b
+      POSTGRES_IMAGE: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+      REDIS_IMAGE: redis:8.2.8-alpine@sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103
 
     steps:
       - name: Checkout
@@ -169,6 +173,41 @@ jobs:
 
       - name: Build production image
         run: docker compose -f docker-compose.prod.yml build release
+
+      - name: Install checksum-verified Trivy
+        run: |
+          archive="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          release_url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          curl --fail --location --silent --show-error \
+            --output "/tmp/${archive}" "${release_url}/${archive}"
+          curl --fail --location --silent --show-error \
+            --output /tmp/trivy-checksums.txt \
+            "${release_url}/trivy_${TRIVY_VERSION}_checksums.txt"
+          echo "${TRIVY_ARCHIVE_SHA256}  /tmp/${archive}" | sha256sum --check --strict
+          expected_checksum="$(grep " ${archive}$" /tmp/trivy-checksums.txt | cut -d ' ' -f 1)"
+          test -n "$expected_checksum"
+          test "$expected_checksum" = "$TRIVY_ARCHIVE_SHA256"
+          tar --extract --gzip --file "/tmp/${archive}" --directory /tmp trivy
+          sudo install --mode 0755 /tmp/trivy /usr/local/bin/trivy
+          trivy --version
+
+      - name: Scan production container images
+        run: |
+          docker pull "$POSTGRES_IMAGE"
+          docker pull "$REDIS_IMAGE"
+          for image in \
+            "smarthealthhub:${IMAGE_TAG}" \
+            "$POSTGRES_IMAGE" \
+            "$REDIS_IMAGE"; do
+            trivy image \
+              --db-repository ghcr.io/aquasecurity/trivy-db:2 \
+              --scanners vuln \
+              --pkg-types os \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --exit-code 1 \
+              "$image"
+          done
 
       - name: Start and verify production stack
         run: |

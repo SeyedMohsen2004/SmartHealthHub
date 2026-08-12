@@ -38,7 +38,7 @@ x-app-environment: &app-environment
 
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
@@ -53,7 +53,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:8.2.8-alpine
+    image: redis:8.2.8-alpine@sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
