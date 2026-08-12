@@ -16,6 +16,9 @@ Backend API for a healthcare appointment management platform built with Django R
   - Doctor
   - Patient
 
+See [Authentication and throttling](docs/authentication.md) for refresh-token
+rotation, logout/revocation, access-token semantics, and bounded API rates.
+
 ### Providers Management
 
 - List healthcare providers
