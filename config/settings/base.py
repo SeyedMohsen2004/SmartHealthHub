@@ -158,6 +158,32 @@ SPECTACULAR_SETTINGS = {
     "SCHEMA_PATH_PREFIX": "/api/v1",
 }
 
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://redis:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_RESULT_BACKEND = None
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = USE_TZ
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+APPOINTMENT_REMINDER_LEAD_HOURS = config(
+    "APPOINTMENT_REMINDER_LEAD_HOURS", default=24, cast=int
+)
+APPOINTMENT_REMINDER_SCAN_INTERVAL_SECONDS = config(
+    "APPOINTMENT_REMINDER_SCAN_INTERVAL_SECONDS", default=60, cast=int
+)
+APPOINTMENT_REMINDER_BATCH_SIZE = config(
+    "APPOINTMENT_REMINDER_BATCH_SIZE", default=500, cast=int
+)
+CELERY_BEAT_SCHEDULE = {
+    "dispatch-due-appointment-reminders": {
+        "task": "notifications.tasks.dispatch_due_appointment_reminders",
+        "schedule": timedelta(seconds=APPOINTMENT_REMINDER_SCAN_INTERVAL_SECONDS),
+    }
+}
+
 LOG_LEVEL = config("LOG_LEVEL", default="INFO")
 LOGGING = {
     "version": 1,
