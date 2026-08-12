@@ -39,6 +39,7 @@ LOCAL_APPS = [
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
+    "config.middleware.RequestContextMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -153,7 +154,7 @@ SIMPLE_JWT = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "SmartHealthHub API",
     "DESCRIPTION": "Production-ready backend API foundation for SmartHealthHub.",
-    "VERSION": "1.0.0",
+    "VERSION": "1.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": "/api/v1",
 }
@@ -188,14 +189,23 @@ LOG_LEVEL = config("LOG_LEVEL", default="INFO")
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "request_context": {
+            "()": "config.request_context.RequestIdFilter",
+        }
+    },
     "formatters": {
         "standard": {
-            "format": "%(asctime)s %(levelname)s [%(name)s:%(lineno)s] %(message)s"
+            "format": (
+                "%(asctime)s level=%(levelname)s logger=%(name)s "
+                "request_id=%(request_id)s message=%(message)s"
+            )
         }
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
+            "filters": ["request_context"],
             "formatter": "standard",
         }
     },
@@ -208,6 +218,11 @@ LOGGING = {
             "handlers": ["console"],
             "level": LOG_LEVEL,
             "propagate": False,
-        }
+        },
+        "smarthealthhub.request": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
     },
 }
